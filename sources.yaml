@@ -1,0 +1,94 @@
+sources:
+  # ── 技术/媒体类（高质量中文科技媒体）──
+  - name: "36kr_tech"
+    type: "search"
+    weight: 1.0
+    queries:
+      - "36kr.com 人工智能 OR 大模型 OR LLM OR AI Agent"
+      - "36kr.com 科技前沿 OR 智能体 OR 开源"
+    crawler_config:
+      browser_adapter: "undetected"
+      headless: true
+    content_filter:
+      threshold: 0.45
+      min_word_count: 200
+
+  - name: "ithome_ai"
+    type: "search"
+    weight: 0.95
+    queries:
+      - "ithome.com 人工智能 OR 大模型 OR LLM"
+      - "ithome.com AI OR 智能体 OR 开源"
+    crawler_config:
+      browser_adapter: "undetected"
+      headless: true
+    content_filter:
+      threshold: 0.45
+      min_word_count: 200
+
+  # ── 社区/讨论类（国际+国内社区）──
+  - name: "hacker_news"
+    type: "search"
+    weight: 0.9
+    queries:
+      - "news.ycombinator.com AI OR LLM OR agent OR machine learning"
+      - "hn.algolia.com AI OR deep learning OR NLP"
+    crawler_config:
+      browser_adapter: "playwright"
+      headless: true
+    content_filter:
+      threshold: 0.4
+      min_word_count: 150
+
+  - name: "zhihu_ai"
+    type: "search"
+    weight: 0.85
+    queries:
+      - "zhihu.com 人工智能 OR 大模型 OR LLM OR AI Agent"
+      - "zhihu.com 机器学习 OR 深度学习"
+    crawler_config:
+      browser_adapter: "undetected"
+      headless: true
+    content_filter:
+      threshold: 0.4
+      min_word_count: 200
+
+  # ── 学术/论文类 ──
+  - name: "semantic_scholar"
+    type: "search"
+    weight: 0.8
+    queries:
+      - "semanticscholar.org AI OR LLM OR agent OR multimodal 2025 2026"
+      - "semanticscholar.org large language model OR training OR inference"
+    crawler_config:
+      browser_adapter: "playwright"
+      headless: true
+    content_filter:
+      threshold: 0.45
+      min_word_count: 250
+
+  # ── 工具/项目类 ──
+  - name: "github_trending"
+    type: "search"
+    weight: 0.7
+    queries:
+      - "github.com trending LLM OR agent OR inference OR training OR vllm"
+      - "github.com awesome-llm OR awesome-agent OR llm-course"
+    crawler_config:
+      browser_adapter: "playwright"
+    content_filter:
+      threshold: 0.4
+      min_word_count: 150
+
+  # ── 官方博客类 ──
+  - name: "official_blogs"
+    type: "search"
+    weight: 0.6
+    queries:
+      - "site:openai.com/blog OR site:anthropic.com/news OR site:blog.google/technology/ai LLM OR model OR agent"
+      - "site:ai.meta.com/blog OR site:developer.nvidia.com/blog LLM OR AI OR inference"
+      - "site:cloud.tencent.com/developer OR site:developer.aliyun.com 大模型 OR LLM"
+    crawler_config:
+      browser_adapter: "undetected"
+    content_filter:
+      threshold: 0.4
