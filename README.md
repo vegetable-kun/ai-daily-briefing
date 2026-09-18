@@ -1,6 +1,6 @@
 # AI Daily Briefing
 
-基于 Tavily 搜索的 AI 领域每日简报生成器，自动采集、打分、去重，输出结构化中文日报。
+基于 Tavily 搜索引擎的 AI 领域每日简报生成器，自动采集、打分、去重，输出结构化中文日报。
 
 ## 特性
 
@@ -30,7 +30,7 @@ pip install tavily-python
 ### 环境变量
 
 ```bash
-export TAVILY_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-api-key" #Tavily每月1000次免费请求额度
 ```
 
 ### 运行
