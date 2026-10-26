@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 脚本自动执行（no-agent 模式），流程如下：
-1. 加载 ~/.hermes/skills/crawl4ai-daily-briefing/references/sources.yaml（缺失则用内置 DEFAULT_SOURCES）
+1. 加载 ~/.hermes/skills/data-science/ai-daily-briefing/references/sources.yaml（缺失则用内置 DEFAULT_SOURCES）
 2. 读取 ~/.hermes/.env 中的 TAVILY_API_KEY
 3. 脚本启动时自动获取当前日期（date.today()），确定 7 天窗口
 4. 对每个 source 调用 Tavily Python SDK 搜索（带 time_range 参数服务端筛选）
@@ -123,7 +123,7 @@ DEFAULT_SOURCES: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # 状态缓存目录
 # ---------------------------------------------------------------------------
-STATE_DIR = Path.home() / ".hermes" / "cron" / "state" / "crawl4ai_briefing"
+STATE_DIR = Path.home() / ".hermes" / "cron" / "state" / "ai_daily_briefing"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 SEEN_URLS_FILE = STATE_DIR / "seen_urls.json"
 TITLE_HASH_FILE = STATE_DIR / "title_hashes.json"
@@ -603,7 +603,7 @@ class BriefingGenerator:
 
 
 def main():
-    config_path = Path.home() / ".hermes" / "skills" / "crawl4ai-daily-briefing" / "references" / "sources.yaml"
+    config_path = Path.home() / ".hermes" / "skills" / "data-science" / "ai-daily-briefing" / "references" / "sources.yaml"
     sources_config = load_sources(config_path)
     gen = BriefingGenerator(sources_config, max_items=TOP_N)
     output = gen.generate()
