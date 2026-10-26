@@ -1,4 +1,4 @@
-#!/home/ecs-assist-user/.hermes/hermes-agent/venv/bin/python3
+#!/home/ecs-assist-user/.hermes/scripts/.venv/bin/python3
 # -*- coding: utf-8 -*-
 """
 脚本自动执行（no-agent 模式），流程如下：
@@ -141,6 +141,14 @@ BLOCKED_DOMAINS: Set[str] = {
     "netflix.com", "spotify.com",
 }
 
+# Firecrawl 的 tbs 参数映射 —— firecrawl 引擎不认 time_range，必须转成 tbs
+_TIME_RANGE_TO_TBS = {
+    "day": "qdr:d",
+    "week": "qdr:w",
+    "month": "qdr:m",
+    "year": "qdr:y",
+}
+
 
 # ===========================================================================
 # 工具函数
@@ -215,31 +223,76 @@ def get_tavily_client() -> TavilyClient:
     return TavilyClient(api_key=TAVILY_API_KEY)
 
 
-def tavily_search(query: str, time_range: str = "week", max_results: int = 5) -> List[Dict[str, Any]]:
-    """调 Tavily SDK 搜索，返回结果列表"""
+def tavily_search(query: str, time_range: str = "week", max_results: int = 5,
+                  tbs: Optional[str] = None, categories: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """调 Tavily SDK 搜索，返回结果列表
+
+    Args:
+        query: 搜索查询
+        time_range: 时间范围 (day/week/month/year)
+        max_results: 最大结果数
+        tbs: Firecrawl 时间筛选 (qdr:d/qdr:w/qdr:m/qdr:y)，仅 firecrawl 引擎
+        categories: 类别过滤 (github/research/pdf)，仅 firecrawl 引擎
+    """
     try:
         client = get_tavily_client()
-        resp = client.search(
-            query=query,
-            max_results=max_results,
-            time_range=time_range,
-        )
+        kwargs = dict(query=query, max_results=max_results, time_range=time_range)
+        if tbs:
+            kwargs["tbs"] = tbs
+        if categories:
+            kwargs["categories"] = categories
+        resp = client.search(**kwargs)
         return resp.get("results", [])
     except Exception as e:
         print(f"[WARN] tavily search error for '{query[:50]}': {e}")
         return []
 
 
-def run_search_batch(queries: List[str], time_range: str = "week", limit: int = 5) -> List[Dict[str, Any]]:
+def firecrawl_search(query: str, categories: Optional[List[str]] = None,
+                     max_results: int = 5, tbs: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Firecrawl SDK 搜索（与 tavily_search 格式一致）"""
+    try:
+        fc_key = os.environ.get("FIRECRAWL_API_KEY", "")
+        if not fc_key:
+            print("[WARN] FIRECRAWL_API_KEY not found")
+            return []
+        from firecrawl import FirecrawlApp
+        app = FirecrawlApp(api_key=fc_key)
+        resp = app.search(query=query, limit=max_results, categories=categories, tbs=tbs)
+        results = []
+        for item in resp.web or []:
+            results.append({
+                "title": item.title or "",
+                "url": item.url or "",
+                "snippet": item.description or "",
+                "published_date": "",
+                "source": "firecrawl",
+                "category": getattr(item, "category", ""),
+            })
+        return results
+    except Exception as e:
+        print(f"[WARN] firecrawl search error for '{query[:50]}': {e}")
+        return []
+
+
+def run_search_batch(queries: List[str], time_range: str = "week", limit: int = 5,
+                     tbs: Optional[str] = None, categories: Optional[List[str]] = None,
+                     engine: str = "tavily") -> List[Dict[str, Any]]:
     """并发搜索一批查询"""
     if not queries:
         return []
     all_results: List[Dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=BATCH_MAX) as executor:
-        futures = {
-            executor.submit(tavily_search, q, time_range, limit): q
-            for q in queries
-        }
+        if engine == "firecrawl":
+            futures = {
+                executor.submit(firecrawl_search, q, categories, limit, tbs): q
+                for q in queries
+            }
+        else:
+            futures = {
+                executor.submit(tavily_search, q, time_range, limit, tbs, categories): q
+                for q in queries
+            }
         for future in as_completed(futures):
             try:
                 results = future.result()
@@ -397,15 +450,27 @@ class BriefingGenerator:
         self.title_hashes: Set[str] = set(_load_json(TITLE_HASH_FILE, []))
 
     def deduplicate(self, items: List[BriefingItem]) -> List[BriefingItem]:
+        """去重：URL 规范化 + 标题 hash。
+
+        注意：这里只读 self.seen_urls/ title_hashes 做判定，不写入。
+        写入推迟到 emit/落盘阶段，避免「采集到但因配额/过滤没输出」的条目
+        被永久标记为已见过，导致后续运行把它们全部跳过（正反馈死锁）。
+        """
         unique: List[BriefingItem] = []
+        local_urls: Set[str] = set()
+        local_titles: Set[str] = set()
         for item in items:
-            if item.url in self.seen_urls:
+            norm = _url_norm(item.url)
+            item.url = norm
+            if not norm:
+                continue
+            if norm in self.seen_urls or norm in local_urls:
                 continue
             th = _title_hash(item.title)
-            if th in self.title_hashes:
+            if th in self.title_hashes or th in local_titles:
                 continue
-            self.title_hashes.add(th)
-            self.seen_urls.add(item.url)
+            local_urls.add(norm)
+            local_titles.add(th)
             unique.append(item)
         return unique
 
@@ -424,7 +489,9 @@ class BriefingGenerator:
         weight = src.get("weight", 1.0)
         time_range = src.get("time_range", "week")
         queries = src.get("queries", [])
-        print(f"[INFO] source={name} weight={weight} time_range={time_range} queries={len(queries)}")
+        engine = src.get("engine", "tavily")
+        categories = src.get("categories")
+        print(f"[INFO] source={name} weight={weight} time_range={time_range} engine={engine} queries={len(queries)}")
 
         batches: List[List[str]] = []
         for i in range(0, len(queries), BATCH_MAX):
@@ -433,7 +500,9 @@ class BriefingGenerator:
         all_raw: List[Dict[str, Any]] = []
         for bi, batch in enumerate(batches, 1):
             print(f"  [INFO]   batch {bi}/{len(batches)} ({len(batch)} queries)")
-            results = run_search_batch(batch, time_range=time_range, limit=5)
+            tbs = _TIME_RANGE_TO_TBS.get(time_range) if engine == "firecrawl" else None
+            results = run_search_batch(batch, time_range=time_range, limit=5,
+                                       engine=engine, categories=categories, tbs=tbs)
             all_raw.extend(results)
             print(f"  [INFO]   batch {bi} returned {len(results)} raw results")
 
@@ -485,8 +554,21 @@ class BriefingGenerator:
         selected.sort(key=lambda x: x.score, reverse=True)
         top = selected[:self.max_items]
 
+        # 只标记「真正输出」的条目，避免未选中的候选被永久跳过（正反馈死锁）
+        for it in top:
+            self.seen_urls.add(it.url)
+            self.title_hashes.add(_title_hash(it.title))
+
         _save_json(SEEN_URLS_FILE, list(self.seen_urls)[-1000:])
         _save_json(TITLE_HASH_FILE, list(self.title_hashes)[-1000:])
+
+        if not top:
+            raise RuntimeError(
+                "采集结果为 0 条（去重/过滤后无内容）。拒绝输出空日报—— "
+                "否则上游模型会拿到 0 条素材却要填满模板，陷入repetition loop。"
+                "排查方向：seen_urls/title_hashes 是否已满 1000 条导致全部命中去重；"
+                "或 Tavily/Firecrawl 配额耗尽。"
+            )
 
         return self._render(top)
 

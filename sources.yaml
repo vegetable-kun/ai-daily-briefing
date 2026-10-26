@@ -1,94 +1,53 @@
 sources:
-  # ── 技术/媒体类（高质量中文科技媒体）──
   - name: "36kr_tech"
-    type: "search"
     weight: 1.0
+    time_range: "week"
     queries:
-      - "36kr.com 人工智能 OR 大模型 OR LLM OR AI Agent"
-      - "36kr.com 科技前沿 OR 智能体 OR 开源"
-    crawler_config:
-      browser_adapter: "undetected"
-      headless: true
-    content_filter:
-      threshold: 0.45
-      min_word_count: 200
+      - "36氪 AI 融资 创业 公司 最新动态"
+      - "36氪 科技 产业 创新 本周 重点"
 
   - name: "ithome_ai"
-    type: "search"
-    weight: 0.95
-    queries:
-      - "ithome.com 人工智能 OR 大模型 OR LLM"
-      - "ithome.com AI OR 智能体 OR 开源"
-    crawler_config:
-      browser_adapter: "undetected"
-      headless: true
-    content_filter:
-      threshold: 0.45
-      min_word_count: 200
-
-  # ── 社区/讨论类（国际+国内社区）──
-  - name: "hacker_news"
-    type: "search"
     weight: 0.9
+    time_range: "week"
     queries:
-      - "news.ycombinator.com AI OR LLM OR agent OR machine learning"
-      - "hn.algolia.com AI OR deep learning OR NLP"
-    crawler_config:
-      browser_adapter: "playwright"
-      headless: true
-    content_filter:
-      threshold: 0.4
-      min_word_count: 150
+      - "IT之家 AI 应用 产品 发布 最新"
+      - "IT之家 科技 互联网 新闻 今天"
+
+  - name: "hacker_news"
+    weight: 0.9
+    time_range: "week"
+    queries:
+      - "Hacker News top AI LLM discussion this week"
+      - "Hacker News machine learning open source tool"
 
   - name: "zhihu_ai"
-    type: "search"
-    weight: 0.85
-    queries:
-      - "zhihu.com 人工智能 OR 大模型 OR LLM OR AI Agent"
-      - "zhihu.com 机器学习 OR 深度学习"
-    crawler_config:
-      browser_adapter: "undetected"
-      headless: true
-    content_filter:
-      threshold: 0.4
-      min_word_count: 200
-
-  # ── 学术/论文类 ──
-  - name: "semantic_scholar"
-    type: "search"
     weight: 0.8
+    time_range: "week"
     queries:
-      - "semanticscholar.org AI OR LLM OR agent OR multimodal 2025 2026"
-      - "semanticscholar.org large language model OR training OR inference"
-    crawler_config:
-      browser_adapter: "playwright"
-      headless: true
-    content_filter:
-      threshold: 0.45
-      min_word_count: 250
+      - "知乎 AI 大模型 技术 经验 分享"
+      - "知乎 人工智能 就业 行业 观点"
 
-  # ── 工具/项目类 ──
+  - name: "semantic_scholar"
+    weight: 0.8
+    time_range: "week"
+    engine: "firecrawl"
+    categories: ["research"]
+    queries:
+      - "large language model AI agent 2026"
+      - "reinforcement learning from human feedback LLM"
+
   - name: "github_trending"
-    type: "search"
-    weight: 0.7
+    weight: 0.75
+    time_range: "week"
+    engine: "firecrawl"
+    categories: ["github"]
     queries:
-      - "github.com trending LLM OR agent OR inference OR training OR vllm"
-      - "github.com awesome-llm OR awesome-agent OR llm-course"
-    crawler_config:
-      browser_adapter: "playwright"
-    content_filter:
-      threshold: 0.4
-      min_word_count: 150
+      - "AI agent harness plugin stars:>500"
+      - "LLM agent framework MCP tool"
 
-  # ── 官方博客类 ──
   - name: "official_blogs"
-    type: "search"
     weight: 0.6
+    time_range: "week"
     queries:
-      - "site:openai.com/blog OR site:anthropic.com/news OR site:blog.google/technology/ai LLM OR model OR agent"
-      - "site:ai.meta.com/blog OR site:developer.nvidia.com/blog LLM OR AI OR inference"
-      - "site:cloud.tencent.com/developer OR site:developer.aliyun.com 大模型 OR LLM"
-    crawler_config:
-      browser_adapter: "undetected"
-    content_filter:
-      threshold: 0.4
+      - "AI model release announcement August 2026"
+      - "AI research breakthrough this week 2026"
